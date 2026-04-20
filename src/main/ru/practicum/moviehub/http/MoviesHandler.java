@@ -50,13 +50,7 @@ public class MoviesHandler extends BaseHttpHandler {
                 break;
             }
             default: {
-                String path = ex.getRequestURI().getPath();
-                if (path.matches("/movies(/\\d+)?")) {
-                    sendError(ex, 405, "Метод не поддерживается",
-                            List.of("Метод " + ex.getRequestMethod() + " не поддерживается для этого ресурса"));
-                } else {
-                    sendError(ex, 404, "Эндпоинт не найден", List.of("Запрошенный ресурс не существует"));
-                }
+                handleGetUnknownEndpoint(ex);
                 break;
             }
         }
@@ -126,35 +120,34 @@ public class MoviesHandler extends BaseHttpHandler {
     }
 
     private void handleGetMovieById(HttpExchange ex) throws IOException {
-        Optional<Integer> idOpt = getMovieId(ex);
-        if (idOpt.isEmpty()) {
+        Optional<Integer> optionalId = getMovieId(ex);
+        if (optionalId.isEmpty()) {
             sendError(ex, 400, "Некорректный ID", List.of("ID должен быть целым числом"));
             return;
         }
 
-        int id = idOpt.get();
-        Optional<Movie> movieOpt = store.getMovie(id);
-        if (movieOpt.isEmpty()) {
-            sendError(ex, 404, "Фильм не найден", List.of("Фильм с ID " + id + " не существует"));
+        int movieId = optionalId.get();
+        Optional<Movie> optionalMovie = store.getMovie(movieId);
+        if (optionalMovie.isEmpty()) {
+            sendError(ex, 404, "Фильм не найден", List.of("Фильм с ID " + movieId + " не существует"));
             return;
         }
 
-        Movie movie = movieOpt.get();
+        Movie movie = optionalMovie.get();
         String jsonResponse = gson.toJson(movie);
         sendJson(ex, 200, jsonResponse);
     }
 
     private void handleDeleteMovieById(HttpExchange ex) throws IOException {
-        Optional<Integer> idOpt = getMovieId(ex);
-        if (idOpt.isEmpty()) {
+        Optional<Integer> optionalId = getMovieId(ex);
+        if (optionalId.isEmpty()) {
             sendError(ex, 400, "Некорректный ID", List.of("ID должен быть целым числом"));
             return;
         }
 
-        int id = idOpt.get();
-
-        Optional<Movie> movieOpt = store.getMovie(id);
-        if (movieOpt.isEmpty()) {
+        int id = optionalId.get();
+        Optional<Movie> optionalMovie = store.getMovie(id);
+        if (optionalMovie.isEmpty()) {
             sendError(ex, 404, "Фильм не найден", List.of("Фильм с ID " + id + " не существует"));
             return;
         }
@@ -238,4 +231,13 @@ public class MoviesHandler extends BaseHttpHandler {
         sendJson(ex, statusCode, gson.toJson(errorResponse));
     }
 
+    private void handleGetUnknownEndpoint(HttpExchange ex) throws IOException {
+        String path = ex.getRequestURI().getPath();
+        if (path.matches("/movies(/\\d+)?")) {
+            sendError(ex, 405, "Метод не поддерживается",
+                    List.of("Метод " + ex.getRequestMethod() + " не поддерживается для этого ресурса"));
+        } else {
+            sendError(ex, 404, "Эндпоинт не найден", List.of("Запрошенный ресурс не существует"));
+        }
+    }
 }
